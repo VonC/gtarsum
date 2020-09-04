@@ -30,7 +30,7 @@ func main() {
 		os.Exit(0)
 	}
 	uiprogress.Start()
-	fmt.Printf("Tarsum for file '%s'\n", f)
+	//fmt.Printf("Tarsum for file '%s'\n", f)
 	h1 := gtarsum(f)
 	fmt.Printf("File '%s' hash='%s'\n", f, h1.hash())
 }
