@@ -10,6 +10,8 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/gosuri/uiprogress"
 )
 
 func main() {
@@ -27,6 +29,7 @@ func main() {
 		fmt.Println(version.String())
 		os.Exit(0)
 	}
+	uiprogress.Start()
 	fmt.Printf("Tarsum for file '%s'\n", f)
 	h1 := gtarsum(f)
 	fmt.Printf("File '%s' hash='%s'\n", f, h1.hash())
@@ -79,9 +82,15 @@ func gtarsum(filename string) entries {
 	}
 	readTarFiles(filename, f)
 
-	fmt.Printf("%d files to process in '%s'\n", nbFiles, filename)
+	// fmt.Printf("%d files to process in '%s'\n", nbFiles, filename)
 
 	entries := make(map[string]string)
+
+	bar := uiprogress.AddBar(nbFiles).AppendCompleted().PrependElapsed()
+
+	bar.PrependFunc(func(b *uiprogress.Bar) string {
+		return fmt.Sprintf("%s(%d)", filename, nbFiles)
+	})
 
 	f = func(tr *tar.Reader, th *tar.Header) {
 		name := th.Name
@@ -110,6 +119,7 @@ func gtarsum(filename string) entries {
 		}
 		bs := h.Sum(nil)
 		entries[name] = fmt.Sprintf("%x", bs)
+		bar.Incr()
 	}
 
 	readTarFiles(filename, f)
