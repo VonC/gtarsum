@@ -39,10 +39,24 @@ func main() {
 
 	//fmt.Printf("Tarsum for file '%s'\n", f)
 	h1 := gtarsum(f, p)
+	h1h := h1.hash()
 	if p != nil {
-		fmt.Printf("File '%s' hash='%s'\n", f, h1.hash())
+		fmt.Printf("File '%s' hash='%s'\n", f, h1h)
+		if strings.HasSuffix(envp, ".hash") {
+			f, err := os.Create(envp)
+			check(err)
+			defer f.Close()
+			_, err = f.WriteString(h1h)
+			check(err)
+		}
 	} else {
-		fmt.Printf("%s", h1.hash())
+		fmt.Printf("%s", h1h)
+	}
+}
+
+func check(err error) {
+	if err != nil {
+		panic(err)
 	}
 }
 
