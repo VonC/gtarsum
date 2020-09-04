@@ -31,12 +31,19 @@ func main() {
 		fmt.Println(version.String())
 		os.Exit(0)
 	}
-
-	p := mpb.New()
+	envp := os.Getenv("progress")
+	var p *mpb.Progress
+	if envp != "" {
+		p = mpb.New()
+	}
 
 	//fmt.Printf("Tarsum for file '%s'\n", f)
 	h1 := gtarsum(f, p)
-	fmt.Printf("File '%s' hash='%s'\n", f, h1.hash())
+	if p != nil {
+		fmt.Printf("File '%s' hash='%s'\n", f, h1.hash())
+	} else {
+		fmt.Printf("%s", h1.hash())
+	}
 }
 
 type entries map[string]string
@@ -90,12 +97,15 @@ func gtarsum(filename string, p *mpb.Progress) entries {
 
 	entries := make(map[string]string)
 
-	bar := p.AddBar(int64(nbFiles), nil,
-		mpb.PrependDecorators(
-			decor.Name(fmt.Sprintf("File '%s' (%d): ", filename, nbFiles)),
-			decor.NewPercentage("%d"),
-		),
-	)
+	var bar *mpb.Bar
+	if p != nil {
+		bar = p.AddBar(int64(nbFiles), nil,
+			mpb.PrependDecorators(
+				decor.Name(fmt.Sprintf("File '%s' (%d): ", filename, nbFiles)),
+				decor.NewPercentage("%d"),
+			),
+		)
+	}
 
 	f = func(tr *tar.Reader, th *tar.Header) {
 		name := th.Name
@@ -124,11 +134,15 @@ func gtarsum(filename string, p *mpb.Progress) entries {
 		}
 		bs := h.Sum(nil)
 		entries[name] = fmt.Sprintf("%x", bs)
-		bar.Increment()
+		if bar != nil {
+			bar.Increment()
+		}
 	}
 
 	readTarFiles(filename, f)
-	p.Wait()
+	if p != nil {
+		p.Wait()
+	}
 
 	return entries
 }
