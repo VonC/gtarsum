@@ -34,9 +34,9 @@ func main() {
 
 type entries map[string]string
 
-func gtarsum(filename string) entries {
+type tarFileVisitor func(tr *tar.Reader, th *tar.Header)
 
-	entries := make(map[string]string)
+func readTarFiles(filename string, tfv tarFileVisitor) {
 
 	f, err := os.Open(filename)
 	if err != nil {
@@ -63,43 +63,56 @@ func gtarsum(filename string) entries {
 			break
 		}
 
-		name := hd.Name
-
 		switch hd.Typeflag {
-		//case tar.TypeDir: // = directory
-		//	fmt.Println("Directory:", name)
 		case tar.TypeReg: // = regular file
-			//fmt.Println("Regular file:", name)
-			h := sha256.New()
-			for {
-				buf := make([]byte, 1024*1024)
-
-				bytesRead, err := tr.Read(buf)
-				if err != nil {
-					if err != io.EOF {
-						panic(err)
-					}
-				}
-
-				if bytesRead > 0 {
-					_, err := h.Write(buf[:bytesRead])
-					if err != nil {
-						panic(err)
-					}
-				}
-
-				if err == io.EOF {
-					//fmt.Printf("tar entry '%s' EOF\n", name)
-					break
-				}
-
-			}
-			bs := h.Sum(nil)
-
-			entries[name] = fmt.Sprintf("%x", bs)
-			// fmt.Printf("Entry name '%s': hash256: %x\n", name, bs)
+			tfv(tr, hd)
 		}
 	}
+
+}
+
+func gtarsum(filename string) entries {
+
+	nbFiles := 0
+	f := func(tr *tar.Reader, th *tar.Header) {
+		nbFiles = nbFiles + 1
+	}
+	readTarFiles(filename, f)
+
+	fmt.Printf("%d files to process in '%s'\n", nbFiles, filename)
+
+	entries := make(map[string]string)
+
+	f = func(tr *tar.Reader, th *tar.Header) {
+		name := th.Name
+		h := sha256.New()
+		for {
+			buf := make([]byte, 1024*1024)
+
+			bytesRead, err := tr.Read(buf)
+			if err != nil {
+				if err != io.EOF {
+					panic(err)
+				}
+			}
+
+			if bytesRead > 0 {
+				_, err := h.Write(buf[:bytesRead])
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			if err == io.EOF {
+				//fmt.Printf("tar entry '%s' EOF\n", name)
+				break
+			}
+		}
+		bs := h.Sum(nil)
+		entries[name] = fmt.Sprintf("%x", bs)
+	}
+
+	readTarFiles(filename, f)
 
 	return entries
 }
