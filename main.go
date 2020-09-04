@@ -11,7 +11,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gosuri/uiprogress"
+	"github.com/vbauerster/mpb/v5"
+
+	"github.com/vbauerster/mpb/v5/decor"
 )
 
 func main() {
@@ -29,9 +31,11 @@ func main() {
 		fmt.Println(version.String())
 		os.Exit(0)
 	}
-	uiprogress.Start()
+
+	p := mpb.New()
+
 	//fmt.Printf("Tarsum for file '%s'\n", f)
-	h1 := gtarsum(f)
+	h1 := gtarsum(f, p)
 	fmt.Printf("File '%s' hash='%s'\n", f, h1.hash())
 }
 
@@ -74,7 +78,7 @@ func readTarFiles(filename string, tfv tarFileVisitor) {
 
 }
 
-func gtarsum(filename string) entries {
+func gtarsum(filename string, p *mpb.Progress) entries {
 
 	nbFiles := 0
 	f := func(tr *tar.Reader, th *tar.Header) {
@@ -86,11 +90,12 @@ func gtarsum(filename string) entries {
 
 	entries := make(map[string]string)
 
-	bar := uiprogress.AddBar(nbFiles).AppendCompleted().PrependElapsed()
-
-	bar.PrependFunc(func(b *uiprogress.Bar) string {
-		return fmt.Sprintf("%s(%d)", filename, nbFiles)
-	})
+	bar := p.AddBar(int64(nbFiles), nil,
+		mpb.PrependDecorators(
+			decor.Name(fmt.Sprintf("File '%s' (%d): ", filename, nbFiles)),
+			decor.NewPercentage("%d"),
+		),
+	)
 
 	f = func(tr *tar.Reader, th *tar.Header) {
 		name := th.Name
@@ -119,10 +124,11 @@ func gtarsum(filename string) entries {
 		}
 		bs := h.Sum(nil)
 		entries[name] = fmt.Sprintf("%x", bs)
-		bar.Incr()
+		bar.Increment()
 	}
 
 	readTarFiles(filename, f)
+	p.Wait()
 
 	return entries
 }
