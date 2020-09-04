@@ -22,5 +22,11 @@ SET dtStamp24=%date:~-4%%date:~3,2%%date:~0,2%-%HOUR%%time:~3,2%%time:~6,2%
 rem if "%HOUR:~0,1%" == " " (SET dtStamp=%dtStamp9%) else (SET dtStamp=%dtStamp24%)
 SET dtStamp=%dtStamp24%
 
+if not "%1" == "amd" (
 go build -race -ldflags "-X %dirname%/version.GitTag=%gitver% -X %dirname%/version.BuildUser=%usern% -X %dirname%/version.Version=%VERSION% -X %dirname%/version.BuildDate=%dtStamp%" .
-if "%1" neq "" ( %dirname% %* )
+) else (
+    cmd /V /C "set GOOS=linux&& set GOARCH=amd64&& go build -ldflags ^"-X %dirname%/version.GitTag=%gitver% -X %dirname%/version.BuildUser=%usern% -X %dirname%/version.Version=%VERSION% -X %dirname%/version.BuildDate=%dtStamp%^" ."
+    if not "%2" == "" (
+        scp %dirname% %2:~/bin/%dirname%
+    )
+)
