@@ -10,6 +10,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/vbauerster/mpb/v5"
 
@@ -21,37 +22,85 @@ func main() {
 	if l < 1 {
 		log.Fatalf("At least one filename is expected (instead of %d)", l)
 	}
-	f := os.Args[1]
-	f = strings.Trim(f, `"`)
-	if f == "" {
-		log.Fatalf(`One, and only one filename is expected (instead of empty "" filename)`)
-	}
-	fl := strings.ToLower(f)
-	if fl == "-v" || fl == "--version" || fl == "version" {
-		fmt.Println(version.String())
-		os.Exit(0)
-	}
+
+	var wg sync.WaitGroup
 	envp := os.Getenv("progress")
 	var p *mpb.Progress
 	if envp != "" {
-		p = mpb.New()
+		p = mpb.New(mpb.WithWaitGroup(&wg))
+	}
+	results := make(chan string, l)
+	errors := make(chan error, l)
+	currentHash := ""
+	status := 0
+
+	for _, f := range os.Args[1:] {
+		f = strings.Trim(f, `"`)
+		if f == "" {
+			log.Fatalf(`At least one filename is expected (instead of empty "" filename)`)
+		}
+		fl := strings.ToLower(f)
+		if fl == "-v" || fl == "--version" || fl == "version" {
+			fmt.Println(version.String())
+			os.Exit(0)
+		}
+
+		hb := newHashable(f, p)
+		wg.Add(1)
+		go func() {
+			h1h := hb.hash()
+			results <- h1h
+		}()
+
+		// here we wait in other goroutine to all jobs done and close the channels
+		go func() {
+			wg.Wait()
+			close(results)
+			close(errors)
+		}()
+	}
+	for err := range errors {
+		// here error happend u could exit your caller function
+		println(err.Error())
+		os.Exit(1)
+	}
+	i := 0
+	for res := range results {
+		i++
+		if p != nil {
+			fmt.Printf("File '%s' hash='%s'\n", os.Args[i], res)
+			if strings.HasSuffix(envp, ".hash") {
+				fe := fmt.Sprintf("%s%d", envp, i)
+				f, err := os.Create(fe)
+				check(err)
+				defer f.Close()
+				_, err = f.WriteString(fe)
+				check(err)
+			}
+		} else {
+			if l == 1 {
+				fmt.Printf("%s", res)
+			}
+			if currentHash == "" {
+				currentHash = res
+			} else if currentHash != res {
+				fmt.Printf("'%s' hash differs from first file hash '%s'", res, currentHash)
+				status = 1
+			}
+		}
 	}
 
-	//fmt.Printf("Tarsum for file '%s'\n", f)
-	h1 := gtarsum(f, p)
-	h1h := h1.hash()
-	if p != nil {
-		fmt.Printf("File '%s' hash='%s'\n", f, h1h)
-		if strings.HasSuffix(envp, ".hash") {
-			f, err := os.Create(envp)
-			check(err)
-			defer f.Close()
-			_, err = f.WriteString(h1h)
-			check(err)
-		}
-	} else {
-		fmt.Printf("%s", h1h)
-	}
+	os.Exit(status)
+}
+
+type hashable struct {
+	f       string
+	entries entries
+	p       *mpb.Progress
+}
+
+func newHashable(f string, p *mpb.Progress) *hashable {
+	return &hashable{f: f, entries: make(map[string]string), p: p}
 }
 
 func check(err error) {
@@ -99,29 +148,34 @@ func readTarFiles(filename string, tfv tarFileVisitor) {
 
 }
 
-func gtarsum(filename string, p *mpb.Progress) entries {
+func (hb *hashable) hash() string {
+	hbBntries := hb.gtarsum()
+	return hbBntries.hash()
+}
+
+func (hb *hashable) gtarsum() entries {
 
 	nbFiles := 0
-	f := func(tr *tar.Reader, th *tar.Header) {
+	fnbFiles := func(tr *tar.Reader, th *tar.Header) {
 		nbFiles = nbFiles + 1
 	}
-	readTarFiles(filename, f)
+	readTarFiles(hb.f, fnbFiles)
 
 	// fmt.Printf("%d files to process in '%s'\n", nbFiles, filename)
 
 	entries := make(map[string]string)
 
 	var bar *mpb.Bar
-	if p != nil {
-		bar = p.AddBar(int64(nbFiles), nil,
+	if hb.p != nil {
+		bar = hb.p.AddBar(int64(nbFiles), nil,
 			mpb.PrependDecorators(
-				decor.Name(fmt.Sprintf("File '%s' (%d): ", filename, nbFiles)),
+				decor.Name(fmt.Sprintf("File '%s' (%d): ", hb.f, nbFiles)),
 				decor.NewPercentage("%d"),
 			),
 		)
 	}
 
-	f = func(tr *tar.Reader, th *tar.Header) {
+	fHashEntry := func(tr *tar.Reader, th *tar.Header) {
 		name := th.Name
 		h := sha256.New()
 		for {
@@ -153,10 +207,7 @@ func gtarsum(filename string, p *mpb.Progress) entries {
 		}
 	}
 
-	readTarFiles(filename, f)
-	if p != nil {
-		p.Wait()
-	}
+	readTarFiles(hb.f, fHashEntry)
 
 	return entries
 }
