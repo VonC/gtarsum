@@ -5,7 +5,7 @@ for %%i in ("%~dp0.") do SET "script_dir=%%~fi"
 cd "%script_dir%"
 for %%i in ("%~dp0.") do SET "dirname=%%~ni"
 
-del *.hash*
+del *.hash* 2>NUL
 
 set "f=%1"
 
@@ -22,5 +22,4 @@ CALL SET someargs=%%allargs:*%1=%%
 set err=%ERRORLEVEL%
 echo.
 echo ERRORLEVEL (exit status)='%err%'
-echo.
-dir /a-d "*.hash*"|findstr hash
+dir /a-d "*.hash*"2>NUL|findstr hash

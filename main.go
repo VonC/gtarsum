@@ -45,7 +45,6 @@ func main() {
 
 		hb := newHashable(f, p)
 		wg.Add(1)
-		fmt.Printf("Hashable on '%s'\n", hb.f)
 		go func() {
 			defer wg.Done()
 			h1h := hb.hash()
