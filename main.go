@@ -31,8 +31,6 @@ func main() {
 	}
 	results := make(chan string, l)
 	errors := make(chan error, l)
-	currentHash := ""
-	status := 0
 
 	for _, f := range os.Args[1:] {
 		f = strings.Trim(f, `"`)
@@ -47,50 +45,63 @@ func main() {
 
 		hb := newHashable(f, p)
 		wg.Add(1)
+		fmt.Printf("Hashable on '%s'\n", hb.f)
 		go func() {
+			defer wg.Done()
 			h1h := hb.hash()
 			results <- h1h
 		}()
-
-		// here we wait in other goroutine to all jobs done and close the channels
-		go func() {
-			wg.Wait()
-			close(results)
-			close(errors)
-		}()
 	}
+
+	wg.Wait()
+	close(results)
+	close(errors)
+
+	if p != nil {
+		p.Wait()
+	}
+
 	for err := range errors {
 		// here error happend u could exit your caller function
 		println(err.Error())
 		os.Exit(1)
 	}
+
+	currentHash := ""
+	status := 0
+	differ := false
 	i := 0
 	for res := range results {
 		i++
+		differ = false
+		if currentHash == "" {
+			currentHash = res
+		} else if currentHash != res {
+			status = 1
+			differ = true
+		}
 		if p != nil {
-			fmt.Printf("File '%s' hash='%s'\n", os.Args[i], res)
 			if strings.HasSuffix(envp, ".hash") {
 				fe := fmt.Sprintf("%s%d", envp, i)
-				f, err := os.Create(fe)
-				check(err)
-				defer f.Close()
-				_, err = f.WriteString(fe)
-				check(err)
+				write(fe, res)
 			}
-		} else {
-			if l == 1 {
-				fmt.Printf("%s", res)
-			}
-			if currentHash == "" {
-				currentHash = res
-			} else if currentHash != res {
-				fmt.Printf("'%s' hash differs from first file hash '%s'", res, currentHash)
-				status = 1
+			if differ {
+				fmt.Printf("File '%s' hash '%s' differs\n", os.Args[i], res)
+			} else {
+				fmt.Printf("File '%s' hash='%s'\n", os.Args[i], res)
 			}
 		}
 	}
 
 	os.Exit(status)
+}
+
+func write(fe, res string) {
+	f, err := os.Create(fe)
+	check(err)
+	defer f.Close()
+	_, err = f.WriteString(res)
+	check(err)
 }
 
 type hashable struct {
