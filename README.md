@@ -46,16 +46,22 @@ a10840209cb1c93c6bb85a34e969cf7eaaf43128b477f0f900cac49b551d26bd
 ### Verbose: with progress bar, for multiple archives
 
 ```bash
-gtarsum <afile.tar> gtarsum <afile2.tar> ...
+progress=2.hash gtarsum <afile.tar> gtarsum <afile2.tar> ...
 
 File 'ex.tar' (73): 100% [============================================================================]
 File 'ex2.tar' (132): 100% [==========================================================================]
 File 'ex.tar' hash='a10840209cb1c93c6bb85a34e969cf7eaaf43128b477f0f900cac49b551d26bd'
 File 'ex2.tar' hash '543a12be3e27d85e94cdfac3eae186cd7d54d4994ccd3db0f96a8077578a6bed' differs
+
+cat 2.hash1
+a10840209cb1c93c6bb85a34e969cf7eaaf43128b477f0f900cac49b551d26bd
+cat 2.hash2
+543a12be3e27d85e94cdfac3eae186cd7d54d4994ccd3db0f96a8077578a6bed
 ```
 
 - compute sha256 for each archive, concurrently (not sequentially)
 - display hash for each archive
+- same rule as before: if the environment variable `progress` ends with `.hash`, the hashes are accessible in `xxx.hash1`/`xxx.hash2`/`...` files.
 
 ### Version
 
