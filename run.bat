@@ -12,7 +12,11 @@ set "f=%1"
 if "%f%" == "" (
     set f=ex.tar
 )
-shift
+REM https://stackoverflow.com/questions/16354102/how-to-get-the-rest-of-arguments-in-windows-batch-file
+REM https://stackoverflow.com/a/16354963/6309
+SET allargs=%*
+SET arg1=%1
+CALL SET someargs=%%allargs:*%1=%%
 
 %dirname% "%f%" %someargs%
 set err=%ERRORLEVEL%
