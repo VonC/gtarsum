@@ -1,1 +1,4 @@
 *.tar
+*.exe
+gtarsum
+*.hash*
