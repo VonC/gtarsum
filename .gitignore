@@ -23,5 +23,5 @@ cover.out
 *.ini
 *.prop*
 *.tar
-/gtarsum
-*.hash
+*.hash*
+gtarsum
