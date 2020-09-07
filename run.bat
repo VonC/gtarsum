@@ -10,5 +10,7 @@ set "f=%1"
 if "%f%" == "" (
     set f=ex.tar
 )
+shift
 
-%dirname% "%f%"
+%dirname% "%f%" %*
+echo "ERRORLEVEL (exit status)='%ERRORLEVEL%'"
