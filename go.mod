@@ -1,4 +1,4 @@
-module gtarsum
+module github.com/VonC/gtarsum
 
 go 1.15
 

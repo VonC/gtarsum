@@ -4,7 +4,7 @@ import (
 	"archive/tar"
 	"crypto/sha256"
 	"fmt"
-	"gtarsum/version"
+	"github.com/VonC/gtarsum/version"
 	"io"
 	"log"
 	"os"
