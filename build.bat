@@ -7,7 +7,7 @@ for %%i in ("%~dp0.") do SET "dirname=%%~ni"
 
 rem https://medium.com/@joshroppo/setting-go-1-5-variables-at-compile-time-for-versioning-5b30a965d33e
 for /f %%i in ('git describe --long --tags --dirty --always') do set gitver=%%i
-set VERSION=v0.2.0
+set VERSION=v0.2.1
 for /f %%i in ('git config user.name') do set usern=%%i
 
 rem https://stackoverflow.com/a/1445724/6309
