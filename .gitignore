@@ -25,3 +25,4 @@ cover.out
 *.tar
 *.hash*
 gtarsum
+dist/
