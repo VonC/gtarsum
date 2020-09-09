@@ -1,0 +1,16 @@
+name: onPushedCommit
+
+on:
+  push:
+    branches:    
+      # Push events on master branch
+      - master
+    tags-ignore:
+      - '*'
+jobs:
+  onPushedCommit:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: goreport-refresh
+        uses: creekorful/goreportcard-action@v1.0
