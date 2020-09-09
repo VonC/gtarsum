@@ -4,13 +4,14 @@ import (
 	"archive/tar"
 	"crypto/sha256"
 	"fmt"
-	"github.com/VonC/gtarsum/version"
 	"io"
 	"log"
 	"os"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/VonC/gtarsum/version"
 
 	"github.com/vbauerster/mpb/v5"
 
@@ -29,46 +30,52 @@ func main() {
 	if envp != "" {
 		p = mpb.New(mpb.WithWaitGroup(&wg))
 	}
-	results := make(chan string, l)
-	errors := make(chan error, l)
 
 	for _, f := range os.Args[1:] {
-		f = strings.Trim(f, `"`)
-		if f == "" {
-			log.Fatalf(`At least one filename is expected (instead of empty "" filename)`)
-		}
 		fl := strings.ToLower(f)
 		if fl == "-v" || fl == "--version" || fl == "version" {
 			fmt.Println(version.String())
 			os.Exit(0)
 		}
+	}
+	hbs := newHashables(os.Args[1:], p, envp)
+	res := hbs.hash(&wg)
+	if res.isPrintable() {
+		fmt.Println(res)
+	}
+	os.Exit(res.status)
+}
 
-		hb := newHashable(f, p)
+func (hbs hashables) hash(wg *sync.WaitGroup) *result {
+
+	l := hbs.len()
+	results := make(chan string, l)
+	errors := make(chan error, l)
+	for _, hb := range hbs.hbs {
 		wg.Add(1)
-		go func() {
+		go func(hb *hashable) {
 			defer wg.Done()
 			h1h := hb.hash()
 			results <- h1h
-		}()
+		}(hb)
 	}
 
 	wg.Wait()
 	close(results)
 	close(errors)
 
-	if p != nil {
-		p.Wait()
+	if hbs.p != nil {
+		hbs.p.Wait()
 	}
 
 	for err := range errors {
-		// here error happend u could exit your caller function
 		println(err.Error())
 		os.Exit(1)
 	}
 
 	currentHash := ""
 	status := 0
-	differ := false
+	var differ bool
 	i := 0
 	for res := range results {
 		i++
@@ -79,9 +86,9 @@ func main() {
 			status = 1
 			differ = true
 		}
-		if p != nil {
-			if strings.HasSuffix(envp, ".hash") {
-				fe := fmt.Sprintf("%s%d", envp, i)
+		if hbs.p != nil {
+			if strings.HasSuffix(hbs.envp, ".hash") {
+				fe := fmt.Sprintf("%s%d", hbs.envp, i)
 				write(fe, res)
 			}
 			if differ {
@@ -92,7 +99,8 @@ func main() {
 		}
 	}
 
-	os.Exit(status)
+	res := &result{hash: currentHash, status: status}
+	return res
 }
 
 func write(fe, res string) {
@@ -107,6 +115,43 @@ type hashable struct {
 	f       string
 	entries entries
 	p       *mpb.Progress
+}
+
+type hashables struct {
+	hbs  []*hashable
+	p    *mpb.Progress
+	envp string
+}
+
+func newHashables(fs []string, p *mpb.Progress, envp string) *hashables {
+	hbs := make([]*hashable, 0)
+	for _, f := range os.Args[1:] {
+		f = strings.Trim(f, `"`)
+		if f == "" {
+			log.Fatalf(`At least one filename is expected (instead of empty "" filename)`)
+		}
+
+		hb := newHashable(f, p)
+		hbs = append(hbs, hb)
+	}
+	return &hashables{hbs: hbs, p: p, envp: envp}
+}
+
+func (hbs *hashables) len() int {
+	return len(hbs.hbs)
+}
+
+type result struct {
+	hash   string
+	status int
+}
+
+func (r *result) isPrintable() bool {
+	return r.status == 0
+}
+
+func (r *result) String() string {
+	return r.hash
 }
 
 func newHashable(f string, p *mpb.Progress) *hashable {
