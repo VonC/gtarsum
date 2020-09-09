@@ -1,6 +1,21 @@
+[![Go Report Card](https://goreportcard.com/badge/Vonc/gtarsum)](https://goreportcard.com/report/Vonc/gtarsum)
+
 # gtarsum
 
 Compute hash for one tar file (or several tar files concurrently)
+
+## Installation
+
+### go get
+
+```go
+go get github.com/VonC/gtarsum
+```
+
+### releases
+
+Artifacts from the [latest release](https://github.com/VonC/gtarsum/releases/latest) for Mac, Linux and Windows (64 bits only)
+
 
 ## Usage
 
