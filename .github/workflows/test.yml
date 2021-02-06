@@ -15,7 +15,9 @@ jobs:
   hello-world:
     runs-on: ubuntu-latest
     name: Hello world
+    env:
+      FNAME: ${{ format('FunTuna[{0}].zip', ${GITHUB_SHA::7}) }}
     steps:
       - run: |
-          echo "Hello world"
-        name: "Print 'Hello world'"
+          echo $FNAME
+        name: "Print 'Hello2 world'"
