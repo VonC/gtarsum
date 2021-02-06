@@ -1,0 +1,21 @@
+# Summary:
+# Mock workflow that does nothing on its own
+# Trick to force GitHub UI to show the "Run workflow" button on all branches
+# See https://github.community/t/cant-trigger-workflow-manually/121740/53?u=vadorequest
+
+name: Deploy to Vercel (production)
+
+on:
+  # Empty "workflow_dispatch", trick that will display the "Run workflow" button on https://github.com/UnlyEd/next-right-now/actions?query=workflow%3A%22Deploy+to+Vercel+%28staging%29%22
+  workflow_dispatch:
+
+jobs:
+  # Mock job that does nothing meaningful, just print a simple Hello world
+  # Avoids our Actions to fail when commits are pushed onto the "gh-pages" branch
+  hello-world:
+    runs-on: ubuntu-latest
+    name: Hello world
+    steps:
+      - run: |
+          echo "Hello world"
+        name: "Print 'Hello world'"
